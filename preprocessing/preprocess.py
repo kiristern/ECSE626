@@ -26,9 +26,11 @@ def get_data(path_data):
     hf = h5py.File(path_data)
     # get MRI k-space
     volume_kspace = hf['kspace'][()]
+    # get original full image
+    origin_complex_image = hf['reconstruction_rss'][:]
     # get ismrmrd header
     et_root = etree.fromstring(hf["ismrmrd_header"][()])
-    return volume_kspace, et_root
+    return volume_kspace, origin_complex_image, et_root
 
 def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
     """
@@ -58,7 +60,7 @@ class accelerateMRI(torch_data.Dataset):
         super().__init__()
         self.path_file = path_file
         # load kspace volumes
-        self.volume_kspace, self.et_root = get_data(self.path_file)
+        self.volume_kspace, self.origin_img, self.et_root = get_data(self.path_file)
         # transform the data into appropriate format
         self.volume_kspace = transforms.to_tensor(self.volume_kspace)
         # define mask function
@@ -115,7 +117,7 @@ class accelerateMRI(torch_data.Dataset):
         # get original complex image at idx
         orig_img = self.transform_slice(img)
         
-        return self.path_file, orig_img, img_transformed
+        return self.path_file, orig_img, img_transformed, self.origin_img
     
 def normalize_pix(img_arr):
     return (np.maximum(img_arr, 0)/img_arr.max()) * 255.0
@@ -142,14 +144,14 @@ file_idx = np.random.randint(0, len(files))
 # plot different accelerations at slice
 transformed_img = []
 for center_frac in center_fractions:
-    fix, axis = plt.subplots(1, len(accelerations)+1, figsize=(20, 9))
+    fix, axis = plt.subplots(1, len(accelerations)+2, figsize=(20, 9))
     
     # start i count from 1 -- index 0 for original image
     for i, accel in enumerate(accelerations, 1):
         # init class    
         accel_MRI = accelerateMRI(files[file_idx], center_frac, accel, seed=42)
         # return transformed complex image
-        name, original_img, transf_img = accel_MRI.__getitem__(file_idx)
+        name, original_img, transf_img, rss = accel_MRI.__getitem__(file_idx)
         transformed_img.append(transf_img)
         
         # get middle slice idx
@@ -169,6 +171,12 @@ for center_frac in center_fractions:
     img2d = normalize_pix(arrimg)
     axis[0].imshow(img2d, cmap='gray')
     axis[0].set_title(f'{fname} (original)', fontsize=12)
+    
+    # plot default reconstructed_rss image
+    img_rss = np.squeeze(rss[0,:,:])
+    img_rss_norm = (np.maximum(img_rss, 0)/img_rss.max()) * 255.0
+    axis[-1].imshow(img_rss_norm, cmap='gray')
+    axis[-1].set_title('rss')
     
     plt.show()
 

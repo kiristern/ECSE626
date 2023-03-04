@@ -60,15 +60,15 @@ class accelerateMRI(torch_data.Dataset):
         super().__init__()
         self.path_file = path_file
         # load kspace volumes
-        self.volume_kspace, self.origin_img, self.et_root = get_data(self.path_file)
+        self.volume_kspace, self.origin_rss, self.et_root = get_data(self.path_file)
         # transform the data into appropriate format
         self.volume_kspace = transforms.to_tensor(self.volume_kspace)
         # define mask function
-        self._mask_fnc = RandomMaskFunc(center_fractions=[center_fractions],
+        self.mask_func = RandomMaskFunc(center_fractions=[center_fractions],
                                         accelerations=[accelerations],
                                         seed=seed)
         # Apply the mask to the k-space 
-        self.mask_kspace, self.mask, _ = transforms.apply_mask(self.volume_kspace, self._mask_fnc)
+        self.mask_kspace, self.mask, _ = transforms.apply_mask(self.volume_kspace, self.mask_func)
 
         # extract target image width, height from ismrmrd header
         enc = ["encoding", "encodedSpace", "matrixSize"]
@@ -117,7 +117,7 @@ class accelerateMRI(torch_data.Dataset):
         # get original complex image at idx
         orig_img = self.transform_slice(img)
         
-        return self.path_file, orig_img, img_transformed, self.origin_img
+        return self.path_file, orig_img, img_transformed, self.origin_rss
     
 def normalize_pix(img_arr):
     return (np.maximum(img_arr, 0)/img_arr.max()) * 255.0

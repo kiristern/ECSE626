@@ -20,33 +20,14 @@ from fastmri.data.subsample import RandomMaskFunc
 from fastmri.data import transforms, mri_data
 from fastmri.data.mri_data import et_query
 
-def save_reconstructions(reconstructions: Dict[str, np.ndarray], out_dir: Path):
-    """
-    Save reconstruction images.
-    This function writes to h5 files that are appropriate for submission to the
-    leaderboard.
-    Source: https://github.com/facebookresearch/fastMRI/blob/main/fastmri/utils.py#L15
-    Args:
-        reconstructions: A dictionary mapping input filenames to corresponding
-            reconstructions.
-        out_dir: Path to the output directory where the reconstructions should
-            be saved.
-    """
-    out_dir.mkdir(exist_ok=True, parents=True)
-    for fname, recons in reconstructions.items():
-        with h5py.File(out_dir / fname, "w") as hf:
-            hf.create_dataset("reconstruction", data=recons)
-
 def get_data(path_data):
     # open all HDF5 files
     hf = h5py.File(path_data)
     # get MRI k-space
     volume_kspace = hf['kspace'][()]
-    # get original full image
-    origin_complex_image = hf['reconstruction_rss'][:]
     # get ismrmrd header
     et_root = etree.fromstring(hf["ismrmrd_header"][()])
-    return volume_kspace, origin_complex_image, et_root
+    return volume_kspace, et_root
 
 def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
     """
@@ -76,7 +57,7 @@ class accelerateMRI(torch_data.Dataset):
         super().__init__()
         self.path_file = path_file
         # load kspace volumes
-        self.volume_kspace, self.original_img, self.et_root = get_data(self.path_file)
+        self.volume_kspace, self.et_root = get_data(self.path_file)
         # transform the data into appropriate format
         self.volume_kspace = transforms.to_tensor(self.volume_kspace)
         # define mask function
@@ -95,27 +76,45 @@ class accelerateMRI(torch_data.Dataset):
         print('file', self.path_file)
            
     # convert k-space into image space
-    def transform_slice(self, img_slice):
-        # Apply Inverse Fourier Transform to get the complex image
-        slice_image = fastmri.ifft2c(self.mask_kspace)
-        # Compute absolute value to get a real image
-        slice_image_abs = fastmri.complex_abs(slice_image)
-        # Combine coils into the full image with root-sum-of-squares transforms
-        sampled_image_rss = fastmri.rss(slice_image_abs, dim=0)
-        # crop input image
-        print('image shape before cropping: ', sampled_image_rss.shape)
-        image_crop = center_crop(sampled_image_rss, self.crop_size)
-        print('cropped image shape', image_crop.shape)
+    def transform_slice(self, img_slice, type=None):
+        
+        # return accelerated image (from mask_kspace)
+        if type == 'accelerate':
+            # Apply Inverse Fourier Transform to get the complex image
+            slice_image = fastmri.ifft2c(self.mask_kspace)
+            # Compute absolute value to get a real image
+            slice_image_abs = fastmri.complex_abs(slice_image)
+            # Combine coils into the full image with root-sum-of-squares transforms
+            sampled_image_rss = fastmri.rss(slice_image_abs, dim=0)
+            # crop input image
+            print('image shape before cropping: ', sampled_image_rss.shape)
+            image_crop = center_crop(sampled_image_rss, self.crop_size)
+            print('cropped image shape', image_crop.shape)
+            
+        else:
+            # Apply Inverse Fourier Transform to get the complex image
+            slice_image = fastmri.ifft2c(self.volume_kspace)
+            # Compute absolute value to get a real image
+            slice_image_abs = fastmri.complex_abs(slice_image)
+            # Combine coils into the full image with root-sum-of-squares transforms
+            sampled_image_rss = fastmri.rss(slice_image_abs, dim=0)
+            # crop input image
+            print('image shape before cropping: ', sampled_image_rss.shape)
+            image_crop = center_crop(sampled_image_rss, self.crop_size)
+            print('cropped image shape', image_crop.shape)
+                
         # Convert back to numpy array
         return np.abs(image_crop.numpy())
     
     def __getitem__(self, idx):
-        # get image slice at idx
-        img_slice = self.volume_kspace[idx]
-        # get complex image from slice at idx
-        sampled_slice = self.transform_slice(img_slice)
+        # get image at idx
+        img = self.volume_kspace[idx]
+        # get accelerated image
+        img_transformed = self.transform_slice(img, type='accelerate')
+        # get original complex image at idx
+        orig_img = self.transform_slice(img)
         
-        return self.path_file, self.original_img, sampled_slice
+        return self.path_file, orig_img, img_transformed
     
 def normalize_pix(img_arr):
     return (np.maximum(img_arr, 0)/img_arr.max()) * 255.0
@@ -131,13 +130,14 @@ files = [data_path+'/'+'file_brain_AXFLAIR_200_6002442.h5', data_path+'/'+'file_
 
 accelerations = [4, 8]
 center_fractions = [0.08, 0.04]
+slice_idx = 10
 
 # select a random idx from list of files
 # file_idx = np.random.randint(0, len(os.listdir(data_path)))
 file_idx = np.random.randint(0, len(files))
 
 # plot different accelerations at slice
-sampled_slices = []
+transformed_img = []
 for center_frac in center_fractions:
     fix, axis = plt.subplots(1, len(accelerations)+1, figsize=(20, 9))
     
@@ -146,20 +146,22 @@ for center_frac in center_fractions:
         # init class    
         accel_MRI = accelerateMRI(files[file_idx], center_frac, accel, seed=42)
         # return transformed complex image
-        name, original_img, slice_samp = accel_MRI.__getitem__(file_idx)
-        sampled_slices.append(slice_samp)
+        name, original_img, transf_img = accel_MRI.__getitem__(file_idx)
+        transformed_img.append(transf_img)
+        # get file name only
+        fname = os.path.basename(name)
         
         # plot each acceleration at slice 0
-        axis[i].imshow(normalize_pix(slice_samp[1]), cmap='gray')
+        axis[i].imshow(normalize_pix(transf_img[slice_idx]), cmap='gray')
         axis[i].set_title(f'x{accel} acceleration, {center_frac} center fractions', fontsize=12)
     
     # plot original in first subplot position
     # get first slice
-    arrimg = np.squeeze(original_img[0, :, :])
+    arrimg = original_img[slice_idx]
     # normalize values
     img2d = normalize_pix(arrimg)
     axis[0].imshow(img2d, cmap='gray')
-    axis[0].set_title('Original', fontsize=12)
+    axis[0].set_title(f'{fname} (original)', fontsize=12)
     
     plt.show()
 

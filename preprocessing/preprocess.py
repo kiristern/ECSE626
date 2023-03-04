@@ -4,6 +4,7 @@ This source code is licensed under the MIT license found in the
 LICENSE file in the root directory of this source tree.
 """
 # taken and/or modified from # https://github.com/facebookresearch/fastMRI/tree/main/fastmri/data 
+#%%
 import os
 from pathlib import Path
 from typing import Dict
@@ -119,8 +120,10 @@ class accelerateMRI(torch_data.Dataset):
 def normalize_pix(img_arr):
     return (np.maximum(img_arr, 0)/img_arr.max()) * 255.0
 
+#%%
+
 # SCRIPT STARTS HERE
-data_path = 'fastMRI/multicoil_train'
+data_path = '../fastMRI/multicoil_train'
 # test with 2 files only -- crashes with full dataset...
 files = [data_path+'/'+'file_brain_AXFLAIR_200_6002442.h5', data_path+'/'+'file_brain_AXFLAIR_200_6002543.h5']
 
@@ -130,7 +133,7 @@ files = [data_path+'/'+'file_brain_AXFLAIR_200_6002442.h5', data_path+'/'+'file_
 
 accelerations = [4, 8]
 center_fractions = [0.08, 0.04]
-slice_idx = 10
+slice_idx = 8
 
 # select a random idx from list of files
 # file_idx = np.random.randint(0, len(os.listdir(data_path)))
@@ -148,6 +151,10 @@ for center_frac in center_fractions:
         # return transformed complex image
         name, original_img, transf_img = accel_MRI.__getitem__(file_idx)
         transformed_img.append(transf_img)
+        
+        # get middle slice idx
+        # slice_idx = int(original_img.shape[0] / 2)
+        
         # get file name only
         fname = os.path.basename(name)
         
@@ -165,3 +172,4 @@ for center_frac in center_fractions:
     
     plt.show()
 
+# %%

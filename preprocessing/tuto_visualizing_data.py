@@ -92,9 +92,6 @@ slice_image_rss = fastmri.rss(slice_image_abs, dim=0)
 plt.imshow(np.abs(slice_image_rss.numpy()), cmap='gray')
 plt.show()
 
-### also see: https://github.com/facebookresearch/fastMRI/blob/main/fastmri_examples/annotation/fastmri_plus_viz.ipynb
-
-
 # So far, we have been looking at fully-sampled data. 
 # We can simulate under-sampled data by creating a mask and applying it to k-space.
 
@@ -111,3 +108,16 @@ cropped = center_crop(sampled_image_rss, crop_size)
 plt.imshow(np.abs(cropped.numpy()), cmap='gray')
 plt.show()
 
+# also see: https://github.com/facebookresearch/fastMRI/blob/main/fastmri_examples/annotation/fastmri_plus_viz.ipynb
+img_data = img["reconstruction_rss"][:]
+print("image shape", img_data.shape)
+
+# display an imageslice
+arrimg = np.squeeze(img_data[0,:,:])
+img2d_scaled = (np.maximum(arrimg,0)/arrimg.max()) * 255.0
+img2d_scaled = Image.fromarray(np.uint8(img2d_scaled))
+plt.figure(figsize=(10,10))
+plt.imshow(img2d_scaled, cmap='gray')
+plt.show()
+
+# click link to view more

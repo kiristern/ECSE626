@@ -126,8 +126,8 @@ def normalize_pix(img_arr):
 
 # SCRIPT STARTS HERE
 data_path = '../fastMRI/multicoil_train'
-# test with 2 files only -- crashes with full dataset...
-files = [data_path+'/'+'file_brain_AXFLAIR_200_6002442.h5', data_path+'/'+'file_brain_AXFLAIR_200_6002543.h5']
+# test with 5 files only -- crashes with full dataset...
+files = [os.path.join('../fastMRI/tiny', os.listdir('../fastMRI/tiny')[i]) for i in range(len(os.listdir('../fastMRI/tiny')))]
 
 # load data
 # kspace_volumes = [get_kspace(data_path+'/'+files) for files in os.listdir(data_path)] # ERROR: zsh: killed python.....

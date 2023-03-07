@@ -22,8 +22,8 @@ print('Attrs: ', [dict(hf[i].attrs) for i in range(len(hf))])
 # MRIs are acquired as 3D volumes, the first dimension is the number of 2D slices
 img = hf[0]
 volume_kspace = img['kspace'][()]
-print(volume_kspace.dtype)
-print(volume_kspace.shape)
+print('vol_kspace.dtype: ', volume_kspace.dtype)
+print('vol_kspace.shape: ', volume_kspace.shape)
 
 et_root = etree.fromstring(img["ismrmrd_header"][()])
 # extract target image width, height from ismrmrd header
@@ -32,11 +32,14 @@ crop_size = (
     int(et_query(et_root, enc + ["x"])),
     int(et_query(et_root, enc + ["y"])),
 )
-print('image (height, width):', crop_size)
+print('image crop size (height, width):', crop_size)
 
 # Choosing the 10-th slice of volume[0]
 slice_kspace = volume_kspace[10]
-print(slice_kspace.shape)
+print('vol_kspace shape at slice 10: ', slice_kspace.shape, 
+      '\n', slice_kspace.shape[0], 'coils', 
+      ', height: ', slice_kspace.shape[1], 
+      ', width: ', slice_kspace.shape[2])
 
 # view the absolute value of k-space
 def show_coils(data, slice_nums, cmap=None):
@@ -93,6 +96,7 @@ show_coils(crop_img, [0, 3, 5], cmap='gray')
 # As we can see, each coil in a multi-coil MRI scan focusses on a different region of the image. 
 # These coils can be combined into the full image using the Root-Sum-of-Squares (RSS) transform.
 slice_image_rss = fastmri.rss(slice_image_abs, dim=0)
+print('rss image dims: ', slice_image_rss.shape)
 plt.imshow(np.abs(slice_image_rss.numpy()), cmap='gray')
 plt.show()
 
@@ -108,6 +112,7 @@ sampled_image = fastmri.ifft2c(masked_kspace)           # Apply Inverse Fourier 
 sampled_image_abs = fastmri.complex_abs(sampled_image)   # Compute absolute value to get a real image
 sampled_image_rss = fastmri.rss(sampled_image_abs, dim=0)
 cropped = center_crop(sampled_image_rss, crop_size)
+print('transformed + cropped image shape: ', cropped.shape)
 
 plt.imshow(np.abs(cropped.numpy()), cmap='gray')
 plt.title('x8, cf: 0.04')
@@ -123,7 +128,7 @@ img2d_scaled = (np.maximum(arrimg,0)/arrimg.max()) * 255.0
 img2d_scaled = Image.fromarray(np.uint8(img2d_scaled))
 plt.figure(figsize=(10,10))
 plt.imshow(img2d_scaled, cmap='gray')
-plt.title('img["reconstruction_rss"] default')
+plt.title('img["reconstruction_rss"] slice 1 (from default)')
 plt.show()
 
 # click link to view more

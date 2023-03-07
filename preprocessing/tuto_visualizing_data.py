@@ -7,9 +7,10 @@ from typing import Dict, NamedTuple, Optional, Sequence, Tuple, Union
 from PIL import ImageDraw, Image, ImageEnhance
 import xml.etree.ElementTree as etree
 from fastmri.data.mri_data import et_query
+import torch
 
 
-pth = 'fastMRI/multicoil_train'
+pth = '../fastMRI/multicoil_train'
 print('number of files: ', len(os.listdir(pth)))
 
 hf = [h5py.File(pth+'/'+i) for i in os.listdir(pth)]
@@ -43,6 +44,7 @@ def show_coils(data, slice_nums, cmap=None):
     for i, num in enumerate(slice_nums):
         plt.subplot(1, len(slice_nums), i + 1)
         plt.imshow(data[num], cmap='gray')
+        plt.title(f'coil {num}')
     plt.show()
 
 # This shows coils 0, 3 and 5
@@ -80,10 +82,12 @@ def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
 slice_kspace2 = T.to_tensor(slice_kspace)      # Convert from numpy array to pytorch tensor
 slice_image = fastmri.ifft2c(slice_kspace2)           # Apply Inverse Fourier Transform to get the complex image
 slice_image_abs = fastmri.complex_abs(slice_image)   # Compute absolute value to get a real image
+
 print('before crop image shape: ', slice_image_abs.shape)
+show_coils(slice_image_abs, [0, 3, 5], cmap='gray')
+
 crop_img = center_crop(slice_image_abs, crop_size) # crop input image
 print('cropped img size: ', crop_img.shape)
-
 show_coils(crop_img, [0, 3, 5], cmap='gray')
 
 # As we can see, each coil in a multi-coil MRI scan focusses on a different region of the image. 
@@ -106,6 +110,7 @@ sampled_image_rss = fastmri.rss(sampled_image_abs, dim=0)
 cropped = center_crop(sampled_image_rss, crop_size)
 
 plt.imshow(np.abs(cropped.numpy()), cmap='gray')
+plt.title('x8, cf: 0.04')
 plt.show()
 
 # also see: https://github.com/facebookresearch/fastMRI/blob/main/fastmri_examples/annotation/fastmri_plus_viz.ipynb
@@ -113,11 +118,12 @@ img_data = img["reconstruction_rss"][:]
 print("image shape", img_data.shape)
 
 # display an imageslice
-arrimg = np.squeeze(img_data[0,:,:])
+arrimg = np.squeeze(img_data[1,:,:]) # squeeze along specified slice
 img2d_scaled = (np.maximum(arrimg,0)/arrimg.max()) * 255.0
 img2d_scaled = Image.fromarray(np.uint8(img2d_scaled))
 plt.figure(figsize=(10,10))
 plt.imshow(img2d_scaled, cmap='gray')
+plt.title('img["reconstruction_rss"] default')
 plt.show()
 
 # click link to view more

@@ -77,37 +77,31 @@ class accelerateMRI(torch_data.Dataset):
             int(et_query(self.et_root, enc + ["y"])),
         )
         print('file', self.path_file)
+        
+    def to_complex(self, input_slice):
+        # Apply Inverse Fourier Transform to get the complex image
+        slice_image = fastmri.ifft2c(input_slice)
+        # Compute absolute value to get a real image
+        slice_image_abs = fastmri.complex_abs(slice_image)
+        # Combine coils into the full image with root-sum-of-squares transforms
+        sampled_image_rss = fastmri.rss(slice_image_abs, dim=0)
+        # crop input image
+        print('image shape before cropping: ', sampled_image_rss.shape)
+        image_crop = center_crop(sampled_image_rss, self.crop_size)
+        print('cropped image shape', image_crop.shape)
+        
+        return np.abs(image_crop.numpy())
            
     # convert k-space into image space
     def transform_slice(self, img_slice, type=None):
         
         # return accelerated image (from mask_kspace)
         if type == 'accelerate':
-            # Apply Inverse Fourier Transform to get the complex image
-            slice_image = fastmri.ifft2c(self.mask_kspace)
-            # Compute absolute value to get a real image
-            slice_image_abs = fastmri.complex_abs(slice_image)
-            # Combine coils into the full image with root-sum-of-squares transforms
-            sampled_image_rss = fastmri.rss(slice_image_abs, dim=0)
-            # crop input image
-            print('image shape before cropping: ', sampled_image_rss.shape)
-            image_crop = center_crop(sampled_image_rss, self.crop_size)
-            print('cropped image shape', image_crop.shape)
-            
+            image_crop = self.to_complex(self.mask_kspace)            
         else:
-            # Apply Inverse Fourier Transform to get the complex image
-            slice_image = fastmri.ifft2c(self.volume_kspace)
-            # Compute absolute value to get a real image
-            slice_image_abs = fastmri.complex_abs(slice_image)
-            # Combine coils into the full image with root-sum-of-squares transforms
-            sampled_image_rss = fastmri.rss(slice_image_abs, dim=0)
-            # crop input image
-            print('image shape before cropping: ', sampled_image_rss.shape)
-            image_crop = center_crop(sampled_image_rss, self.crop_size)
-            print('cropped image shape', image_crop.shape)
+            image_crop = self.to_complex(self.volume_kspace)
                 
-        # Convert back to numpy array
-        return np.abs(image_crop.numpy())
+        return image_crop
     
     def __getitem__(self, idx):
         # get image at idx
@@ -115,7 +109,7 @@ class accelerateMRI(torch_data.Dataset):
         # get accelerated image
         img_transformed = self.transform_slice(img, type='accelerate')
         # get original complex image at idx
-        orig_img = self.transform_slice(img)
+        orig_img = self.transform_slice(img, type=None)
         
         return self.path_file, orig_img, img_transformed, self.origin_rss
     

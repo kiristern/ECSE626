@@ -82,6 +82,7 @@ def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
 
     return data[..., w_from:w_to, h_from:h_to]
 
+# NB, applying to 10th slice from volume_kspace element
 slice_kspace2 = T.to_tensor(slice_kspace)      # Convert from numpy array to pytorch tensor
 slice_image = fastmri.ifft2c(slice_kspace2)           # Apply Inverse Fourier Transform to get the complex image
 slice_image_abs = fastmri.complex_abs(slice_image)   # Compute absolute value to get a real image
@@ -117,6 +118,27 @@ print('transformed + cropped image shape: ', cropped.shape)
 plt.imshow(np.abs(cropped.numpy()), cmap='gray')
 plt.title('x8, cf: 0.04')
 plt.show()
+
+# NB. transformation on slice 10 from volume_kspace
+dataset = T.apply_mask(slice_kspace2, mask_func) # tuple((masked_kspace, mask), num_low_freq)
+print('dataset.shape: ', dataset[0].shape) # torch.Size([6, 640, 320, 2])
+m_ksp = dataset[0][5]
+print('masked_ksp: ', m_ksp.shape) # torch.Size([640, 320, 2])
+plt.subplot(131), plt.imshow(np.log(np.abs(m_ksp) + 1e-9)[:,:,0], cmap='gray')
+plt.subplot(132), plt.imshow(np.log(np.abs(m_ksp) + 1e-9)[:,:,1], cmap='gray')
+
+complx = fastmri.complex_abs(m_ksp)
+print('complx shape: ', complx.shape) # torch.Size([640, 320])
+plt.imshow(np.log(np.abs(complx) + 1e-9), cmap='gray')
+
+# inverse fourier
+ift = fastmri.ifft2c(dataset[0])
+print('ift shape: ', ift.shape) # torch.Size([6, 640, 320, 2])
+ift_cplx = fastmri.complex_abs(ift)
+print('ift_cplx shape: ', ift_cplx.shape) # torch.Size([6, 640, 320])
+rss = fastmri.rss(ift_cplx, dim=0)
+print('rss shape: ', rss.shape) # torch.Size([640, 320])
+plt.imshow(np.abs(rss), cmap='gray')
 
 # also see: https://github.com/facebookresearch/fastMRI/blob/main/fastmri_examples/annotation/fastmri_plus_viz.ipynb
 img_data = img["reconstruction_rss"][:]

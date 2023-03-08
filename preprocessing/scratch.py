@@ -1,6 +1,6 @@
 #%%
 import os
-import pathlib 
+from pathlib import Path 
 from typing import Dict
 import h5py
 import numpy as np
@@ -18,6 +18,7 @@ from fastmri.data.mri_data import et_query
 
         
 data_dir = '../fastMRI/tiny'
+# if sudden issue with running script, try rm .DS_Store file -- it messes up import!
 
 #%%  
 # create a k-space mask for transforming input data using RandomMaskFunction
@@ -43,7 +44,7 @@ def data_transform(kspace, mask, target, data_attributes, filename, slice_num):
 
 # apply transform to all slices for each image file in the dataset folder
 dataset = mri_data.SliceDataset(
-    root=pathlib.Path(data_dir),
+    root=Path(data_dir),
     transform=data_transform,
     challenge='multicoil'
 )
@@ -213,7 +214,7 @@ class doReconstruction():
                                                 )
         self.apply_transform = self.data_transform
         self.dataset = mri_data.SliceDataset(
-            root=pathlib.Path(self.data_dir),
+            root=Path(self.data_dir),
             transform=self.apply_transform,
             challenge='multicoil',
             )
@@ -322,10 +323,6 @@ def plot_slices(data_dict, filename, slice_num):
 for files in data:
     plot_slices(data, files, slice_num=2)
     
-#%%
-data_dir = '../fastMRI/tiny'
-
-data = doReconstruction(data_dir)
 
 #%%
 plt.imshow(recon_vols[0][0], cmap='gray')

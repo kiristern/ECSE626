@@ -52,53 +52,6 @@ print(dir(dataset))
 print(dataset.__dict__)
 
 #%%
-# get filename for each slice in dataset
-fname = [dataset.__dict__["examples"][idx][0] for idx in range(len(dataset))]
-fname
-
-#%% 
-# extract file basename
-for i, j in enumerate(dataset):
-    print(os.path.basename(dataset.__dict__["examples"][i][0]))
-
-#%%
-# create a dictionary for data
-data_dict = {}
-
-# get the names of filenames from data
-fnames = [os.path.basename(dataset.__dict__["examples"][i][0]) for i in range(len(dataset))]
-# convert fnames list to a set, to get unique filename instances only
-fname = set(fnames)
-
-for filename in fname:
-    # add unique filenames to dictionary
-    data_dict[filename] = {}
-    # add subdicts for each file
-    data_dict[filename] = {'acceleration': {}, 'original_rss': {}}
-      
-    count = 0 # init count to zero for the current filename 
-    for i, masked_kspace in enumerate(dataset):
-        # add masked_kspace array to each slice if filename is the same
-        if os.path.basename(dataset.__dict__["examples"][i][0]) == filename:
-            count += 1 # increment count for the current filename
-            # add reconstructed data slices for each file
-            data_dict[filename]['acceleration'].setdefault(f'slice{count}', do_reconstruction(masked_kspace[0]))
-            # add original rss data for each slice in the file
-            data_dict[filename]['original_rss'].setdefault(f'slice{count}', masked_kspace[0])
-#%%
-# view keys in dictionary
-# print('filenames: ', data_dict.keys())
-
-# print keys for each sub-dictionary
-for key, sub_dict in data_dict.items():
-    print(f"Dataset type for filename '{key}':")
-    for sub_key, subsub_dict in sub_dict.items():
-        print(f"Slices for dataset '{sub_key}':")
-        for subsub_key in subsub_dict.keys():
-            print(subsub_key)
-        print() # add an empty line between sub-dicts
-
-#%%
 for masked_kspace in dataset:
     print('masked_kspace[0]: ', masked_kspace[0]) # masked_kspace
     print('masked_kspace[1]: ', masked_kspace[1]) # mask
@@ -198,6 +151,55 @@ for i, slices in enumerate(abs_img):
 plt.show()
 
 
+
+#%%
+# get filename for each slice in dataset
+fname = [dataset.__dict__["examples"][idx][0] for idx in range(len(dataset))]
+fname
+
+#%% 
+# extract file basename
+for i, j in enumerate(dataset):
+    print(os.path.basename(dataset.__dict__["examples"][i][0]))
+
+#%%
+# create a dictionary for data
+data_dict = {}
+
+# get the names of filenames from data
+fnames = [os.path.basename(dataset.__dict__["examples"][i][0]) for i in range(len(dataset))]
+# convert fnames list to a set, to get unique filename instances only
+fname = set(fnames)
+
+for filename in fname:
+    # add unique filenames to dictionary
+    data_dict[filename] = {}
+    # add subdicts for each file
+    data_dict[filename] = {'acceleration': {}, 'original_rss': {}}
+      
+    count = 0 # init count to zero for the current filename 
+    for i, masked_kspace in enumerate(dataset):
+        # add masked_kspace array to each slice if filename is the same
+        if os.path.basename(dataset.__dict__["examples"][i][0]) == filename:
+            count += 1 # increment count for the current filename
+            # add reconstructed data slices for each file
+            data_dict[filename]['acceleration'].setdefault(f'slice{count}', do_reconstruction(masked_kspace[0]))
+            # add original rss data for each slice in the file
+            data_dict[filename]['original_rss'].setdefault(f'slice{count}', masked_kspace[0])
+#%%
+# view keys in dictionary
+# print('filenames: ', data_dict.keys())
+
+# print keys for each sub-dictionary
+for key, sub_dict in data_dict.items():
+    print(f"Dataset type for filename '{key}':")
+    for sub_key, subsub_dict in sub_dict.items():
+        print(f"Slices for dataset '{sub_key}':")
+        for subsub_key in subsub_dict.keys():
+            print(subsub_key)
+        print() # add an empty line between sub-dicts
+
+
 ###############################
 #%%
 class doReconstruction():    
@@ -275,18 +277,51 @@ class doReconstruction():
         for filename in fname:
             # add unique filenames to dictionary
             data_dict[filename] = {}
-            count = 0 # init count to zero for the current filename
-
+            # add subdicts for each file
+            data_dict[filename] = {'acceleration': {}, 'original_rss': {}}
+            
+            count = 0 # init count to zero for the current filename 
             for i, masked_kspace in enumerate(dataset):
                 # add masked_kspace array to each slice if filename is the same
                 if os.path.basename(dataset.__dict__["examples"][i][0]) == filename:
                     count += 1 # increment count for the current filename
-                    # add data to dictionary
-                    data_dict[filename][f'slice{count}'] = self.reconstruct(masked_kspace[0])
+                    # add reconstructed data slices for each file
+                    data_dict[filename]['acceleration'].setdefault(f'slice{count}', self.reconstruct(masked_kspace[0]))
+                    # add original rss data for each slice in the file
+                    data_dict[filename]['original_rss'].setdefault(f'slice{count}', masked_kspace[0])
             
         return data_dict
  
 
+#%%
+data_dir = '../fastMRI/tiny'
+
+# get dataset dictionary
+data = doReconstruction(data_dir)['data_dir']
+
+#%%
+# plot both accelerated and original slices
+def plot_slices(data_dict, filename, slice_num):
+    # Get the acceleration and original sub-dictionaries for the specified filename
+    accel_dict = data_dict[filename]['acceleration']
+    orig_dict = data_dict[filename]['original_rss']
+
+    # Get the acceleration and original arrays for the specified slice number
+    accel_slice = accel_dict.get(f'slice{slice_num}')
+    orig_slice = orig_dict.get(f'slice{slice_num}')
+
+    # Plot the acceleration and original arrays side by side
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5))
+    fig.suptitle(f"Slice {slice_num} from {filename}")
+    ax1.imshow(accel_slice, cmap='gray')
+    ax1.set_title("Acceleration")
+    ax2.imshow(orig_slice, cmap='gray')
+    ax2.set_title("Original")
+    plt.show()
+    
+for files in data:
+    plot_slices(data, files, slice_num=2)
+    
 #%%
 data_dir = '../fastMRI/tiny'
 

@@ -40,7 +40,7 @@ def data_transform(kspace, mask, target, data_attributes, filename, slice_num):
     # returns: tuple((masked_kspace, mask), num_low_frequencies)
     masked_kspace = transforms.apply_mask(kspace, mask_func)
     # masked_kspace = transforms.apply_mask(kspace, mask_func)
-    return masked_kspace
+    return masked_kspace, kspace
 
 # apply transform to all slices for each image file in the dataset folder
 dataset = mri_data.SliceDataset(
@@ -53,12 +53,15 @@ print(dir(dataset))
 print(dataset.__dict__)
 
 #%%
-for masked_kspace in dataset:
+for i, (masked_kspace, kspace) in enumerate(dataset):
     print('masked_kspace[0]: ', masked_kspace[0]) # masked_kspace
+    print()
     print('masked_kspace[1]: ', masked_kspace[1]) # mask
+    print()
+    print('kspace original', kspace)
 #%%
 # plots the sampled kspace mask
-for i, j in enumerate(dataset):
+for i, (j, k) in enumerate(dataset):
     print('index: ', i, 'j[0].shape: ', j[0].shape)
     complx = fastmri.complex_abs(j[0][15])
     print('complx shape at slice 16: ', complx.shape) # torch.Size([640, 320])
@@ -99,7 +102,7 @@ def do_reconstruction(masked_kspace, crop_size=(320, 320)):
     return np.abs(rss.numpy())
 #%%
 # plot reconstructed image for each slice
-for i, j in enumerate(dataset):
+for i, (j, k) in enumerate(dataset):
     print('index: ', i, 'j[0].shape: ', j[0].shape)
     rss = do_reconstruction(j[0])
     # crop image
@@ -109,14 +112,14 @@ for i, j in enumerate(dataset):
     plt.show()
     
 # %%
-for masked_kspace in dataset:
+for (masked_kspace, kspace) in dataset:
     plt.imshow(do_reconstruction(masked_kspace[0]), cmap='gray')
     
 #%%
 # SliceDataset exploration
-print('total number of slices in dataset: ', len(dataset)) # 80 --> 5 files in tiny folder; each with 16 channels
+print('total number of slices in dataset: ', len(dataset)) # 48 --> 3 files in tiny folder; each with 16 channels
 print('datatype: ', type(dataset[0])) # tuple: ()
-temp = dataset[0][0] # first idx of tuple from first slice from dataset 
+temp = dataset[0][0][0] # first idx of tuple from first slice from dataset 
 print('shape of slice 0: ', temp.shape) # torch.Size([16, 640, 320, 2]) --> (slices, height, width, coils)
 slice10 = temp[10] # take slice10
 print('slice10 from slice1 shape: ', slice10.shape) # torch.Size([640, 320, 2])
@@ -179,14 +182,14 @@ for filename in fname:
     data_dict[filename] = {'acceleration': {}, 'original_rss': {}}
       
     count = 0 # init count to zero for the current filename 
-    for i, masked_kspace in enumerate(dataset):
+    for i, (masked_kspace, kspace) in enumerate(dataset):
         # add masked_kspace array to each slice if filename is the same
         if os.path.basename(dataset.__dict__["examples"][i][0]) == filename:
             count += 1 # increment count for the current filename
             # add reconstructed data slices for each file
             data_dict[filename]['acceleration'].setdefault(f'slice{count}', do_reconstruction(masked_kspace[0]))
             # add original rss data for each slice in the file
-            data_dict[filename]['original_rss'].setdefault(f'slice{count}', masked_kspace[0])
+            data_dict[filename]['original_rss'].setdefault(f'slice{count}', do_reconstruction(kspace))
 #%%
 # view keys in dictionary
 # print('filenames: ', data_dict.keys())
@@ -226,7 +229,7 @@ class doReconstruction():
         # Here we simply mask the k-space and return the result
         kspace = transforms.to_tensor(kspace)
         masked_kspace = transforms.apply_mask(kspace, self.mask_function)
-        return masked_kspace
+        return masked_kspace, kspace
     
     def center_crop(self, data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
         """
@@ -252,9 +255,9 @@ class doReconstruction():
         return data[w_from:w_to, h_from:h_to]
     
     # function to reconstruct a complex image
-    def reconstruct(self, masked_kspace):
+    def reconstruct(self, kspace):
         # apply inverse fourier transform to get complex image
-        ift = fastmri.ifft2c(masked_kspace)
+        ift = fastmri.ifft2c(kspace)
         # compute abs value to get a real image
         ift_abs = fastmri.complex_abs(ift)
         # combine coils into the full image with root-sum-of-squares transform
@@ -282,14 +285,14 @@ class doReconstruction():
             data_dict[filename] = {'acceleration': {}, 'original_rss': {}}
             
             count = 0 # init count to zero for the current filename 
-            for i, masked_kspace in enumerate(dataset):
+            for i, (masked_kspace, kspace) in enumerate(dataset):
                 # add masked_kspace array to each slice if filename is the same
                 if os.path.basename(dataset.__dict__["examples"][i][0]) == filename:
                     count += 1 # increment count for the current filename
                     # add reconstructed data slices for each file
                     data_dict[filename]['acceleration'].setdefault(f'slice{count}', self.reconstruct(masked_kspace[0]))
                     # add original rss data for each slice in the file
-                    data_dict[filename]['original_rss'].setdefault(f'slice{count}', masked_kspace[0])
+                    data_dict[filename]['original_rss'].setdefault(f'slice{count}', self.reconstruct(kspace))
             
         return data_dict
  
@@ -323,8 +326,5 @@ def plot_slices(data_dict, filename, slice_num):
 for files in data:
     plot_slices(data, files, slice_num=2)
     
-
-#%%
-plt.imshow(recon_vols[0][0], cmap='gray')
 
 #%%

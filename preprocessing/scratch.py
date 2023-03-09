@@ -329,20 +329,29 @@ for files in data:
 #%%
 # stack the slices to make a 3D volume
 def make3Dvolume(data):
+    new_dict = {}
     for f, file_data in data.items():
+        new_file_data = {}
         for data_type, slices in file_data.items():
             stacked_slices = []
             # create volume by stacking array slices into 1 object
             for s, arr in slices.items():
                 stacked_slices.append(arr)
             # update dictionary to remove the slices sub-keys    
-            file_data[data_type] = np.array(stacked_slices)
-    return data
+            new_file_data[data_type] = np.array(stacked_slices)
+        new_dict[f] = new_file_data
+    return new_dict
 
 vol_dict = make3Dvolume(data)
 #%%
+# 3d data dict selected by slice idx
 plt.subplot(121), plt.imshow(vol_dict['file_brain_AXFLAIR_200_6002442.h5']['acceleration'][0], cmap='gray')
 plt.subplot(122), plt.imshow(vol_dict['file_brain_AXFLAIR_200_6002442.h5']['original_rss'][0], cmap='gray')
+plt.show()
+
+# 2d data dict selected by slices
+plt.subplot(121), plt.imshow(data['file_brain_AXFLAIR_200_6002442.h5']['acceleration']['slice1'], cmap='gray')
+plt.subplot(122), plt.imshow(data['file_brain_AXFLAIR_200_6002442.h5']['original_rss']['slice1'], cmap='gray')
 plt.show()
 
 #%% 

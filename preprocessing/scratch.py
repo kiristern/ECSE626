@@ -52,20 +52,20 @@ dataset = mri_data.SliceDataset(
 print(dir(dataset))
 print(dataset.__dict__)
 
-#%%
-for i, (masked_kspace, kspace) in enumerate(dataset):
-    print('masked_kspace[0]: ', masked_kspace[0]) # masked_kspace
-    print()
-    print('masked_kspace[1]: ', masked_kspace[1]) # mask
-    print()
-    print('kspace original', kspace)
-#%%
+
+# for i, (masked_kspace, kspace) in enumerate(dataset):
+#     print('masked_kspace[0]: ', masked_kspace[0]) # masked_kspace
+#     print()
+#     print('masked_kspace[1]: ', masked_kspace[1]) # mask
+#     print()
+#     print('kspace original', kspace)
+
 # plots the sampled kspace mask
-for i, (j, k) in enumerate(dataset):
-    print('index: ', i, 'j[0].shape: ', j[0].shape)
-    complx = fastmri.complex_abs(j[0][15])
-    print('complx shape at slice 16: ', complx.shape) # torch.Size([640, 320])
-    plt.imshow(np.log(np.abs(complx) + 1e-9), cmap='gray')
+# for i, (j, k) in enumerate(dataset):
+#     print('index: ', i, 'j[0].shape: ', j[0].shape)
+#     complx = fastmri.complex_abs(j[0][15])
+#     print('complx shape at slice 16: ', complx.shape) # torch.Size([640, 320])
+#     plt.imshow(np.log(np.abs(complx) + 1e-9), cmap='gray')
 
 #%%
 def center_crop(data: torch.Tensor, shape: Tuple[int, int]) -> torch.Tensor:
@@ -100,20 +100,20 @@ def do_reconstruction(masked_kspace, crop_size=(320, 320)):
     rss = fastmri.rss(ift_abs, dim=0)
     
     return np.abs(rss.numpy())
-#%%
-# plot reconstructed image for each slice
-for i, (j, k) in enumerate(dataset):
-    print('index: ', i, 'j[0].shape: ', j[0].shape)
-    rss = do_reconstruction(j[0])
-    # crop image
-    cropped = center_crop(rss, (320, 320))
-    print('cropped rss_img shape: ', cropped.shape)
-    plt.imshow(cropped, cmap='gray')
-    plt.show()
+
+# # plot reconstructed image for each slice
+# for i, (j, k) in enumerate(dataset):
+#     print('index: ', i, 'j[0].shape: ', j[0].shape)
+#     rss = do_reconstruction(j[0])
+#     # crop image
+#     cropped = center_crop(rss, (320, 320))
+#     print('cropped rss_img shape: ', cropped.shape)
+#     plt.imshow(cropped, cmap='gray')
+#     plt.show()
     
-# %%
-for (masked_kspace, kspace) in dataset:
-    plt.imshow(do_reconstruction(masked_kspace[0]), cmap='gray')
+
+# for (masked_kspace, kspace) in dataset:
+#     plt.imshow(do_reconstruction(masked_kspace[0]), cmap='gray')
     
 #%%
 # SliceDataset exploration
@@ -128,80 +128,79 @@ plt.subplot(131), plt.imshow(np.log(np.abs(slice10) + 1e-9)[:,:,0], cmap='gray')
 plt.subplot(132), plt.imshow(np.log(np.abs(slice10) + 1e-9)[:,:,1], cmap='gray')
 plt.show()
 
-# apply inverse fourier transform to get complex image
-img_FT = fastmri.ifft2c(slice10)
-print('complex image shape: ', img_FT.shape) # torch.Size([640, 320, 2])
-# compute absolute val to get a real image
-img_abs = fastmri.complex_abs(img_FT)
-print('abs val img shape: ', img_abs.shape) # torch.Size([640, 320])
-# plot
-plt.imshow(img_abs, cmap='gray')
-plt.show()
-
-#%%
-# plot all first 16 slices from dataset slice 0
-img_ft = []
-for i, slices in enumerate(temp):
-    img_ft.append(fastmri.ifft2c(slices))
-print('img_ft len: ', len(img_ft))
-abs_img = []
-for i, slices in enumerate(img_ft):
-    abs_img.append(fastmri.complex_abs(slices))
-
-plt.figure(figsize=(10,10))
-for i, slices in enumerate(abs_img):
-    plt.subplot(4, 4, i+1)
-    plt.imshow(abs_img[i], cmap='gray')
-plt.show()
+# # apply inverse fourier transform to get complex image
+# img_FT = fastmri.ifft2c(slice10)
+# print('complex image shape: ', img_FT.shape) # torch.Size([640, 320, 2])
+# # compute absolute val to get a real image
+# img_abs = fastmri.complex_abs(img_FT)
+# print('abs val img shape: ', img_abs.shape) # torch.Size([640, 320])
+# # plot
+# plt.imshow(img_abs, cmap='gray')
+# plt.show()
 
 
+# # plot all first 16 slices from dataset slice 0
+# img_ft = []
+# for i, slices in enumerate(temp):
+#     img_ft.append(fastmri.ifft2c(slices))
+# print('img_ft len: ', len(img_ft))
+# abs_img = []
+# for i, slices in enumerate(img_ft):
+#     abs_img.append(fastmri.complex_abs(slices))
 
-#%%
-# get filename for each slice in dataset
-fname = [dataset.__dict__["examples"][idx][0] for idx in range(len(dataset))]
-fname
+# plt.figure(figsize=(10,10))
+# for i, slices in enumerate(abs_img):
+#     plt.subplot(4, 4, i+1)
+#     plt.imshow(abs_img[i], cmap='gray')
+# plt.show()
 
-#%% 
-# extract file basename
-for i, j in enumerate(dataset):
-    print(os.path.basename(dataset.__dict__["examples"][i][0]))
+
+
+
+# # get filename for each slice in dataset
+# fname = [dataset.__dict__["examples"][idx][0] for idx in range(len(dataset))]
+# fname
+
+# # extract file basename
+# for i, j in enumerate(dataset):
+#     print(os.path.basename(dataset.__dict__["examples"][i][0]))
 
 #%%
 # create a dictionary for data
-data_dict = {}
+# data_dict = {}
 
-# get the names of filenames from data
-fnames = [os.path.basename(dataset.__dict__["examples"][i][0]) for i in range(len(dataset))]
-# convert fnames list to a set, to get unique filename instances only
-fname = set(fnames)
+# # get the names of filenames from data
+# fnames = [os.path.basename(dataset.__dict__["examples"][i][0]) for i in range(len(dataset))]
+# # convert fnames list to a set, to get unique filename instances only
+# fname = set(fnames)
 
-for filename in fname:
-    # add unique filenames to dictionary
-    data_dict[filename] = {}
-    # add subdicts for each file
-    data_dict[filename] = {'acceleration': {}, 'original_rss': {}}
+# for filename in fname:
+#     # add unique filenames to dictionary
+#     data_dict[filename] = {}
+#     # add subdicts for each file
+#     data_dict[filename] = {'acceleration': {}, 'original_rss': {}}
       
-    count = 0 # init count to zero for the current filename 
-    for i, (masked_kspace, kspace) in enumerate(dataset):
-        # add masked_kspace array to each slice if filename is the same
-        if os.path.basename(dataset.__dict__["examples"][i][0]) == filename:
-            count += 1 # increment count for the current filename
-            # add reconstructed data slices for each file
-            data_dict[filename]['acceleration'].setdefault(f'slice{count}', do_reconstruction(masked_kspace[0]))
-            # add original rss data for each slice in the file
-            data_dict[filename]['original_rss'].setdefault(f'slice{count}', do_reconstruction(kspace))
+#     count = 0 # init count to zero for the current filename 
+#     for i, (masked_kspace, kspace) in enumerate(dataset):
+#         # add masked_kspace array to each slice if filename is the same
+#         if os.path.basename(dataset.__dict__["examples"][i][0]) == filename:
+#             count += 1 # increment count for the current filename
+#             # add reconstructed data slices for each file
+#             data_dict[filename]['acceleration'].setdefault(f'slice{count}', do_reconstruction(masked_kspace[0]))
+#             # add original rss data for each slice in the file
+#             data_dict[filename]['original_rss'].setdefault(f'slice{count}', do_reconstruction(kspace))
 #%%
 # view keys in dictionary
 # print('filenames: ', data_dict.keys())
 
 # print keys for each sub-dictionary
-for key, sub_dict in data_dict.items():
-    print(f"Dataset type for filename '{key}':")
-    for sub_key, subsub_dict in sub_dict.items():
-        print(f"Slices for dataset '{sub_key}':")
-        for subsub_key in subsub_dict.keys():
-            print(subsub_key)
-        print() # add an empty line between sub-dicts
+# for key, sub_dict in data_dict.items():
+#     print(f"Dataset type for filename '{key}':")
+#     for sub_key, subsub_dict in sub_dict.items():
+#         print(f"Slices for dataset '{sub_key}':")
+#         for subsub_key in subsub_dict.keys():
+#             print(subsub_key)
+#         print() # add an empty line between sub-dicts
 
 
 ###############################
@@ -324,7 +323,81 @@ def plot_slices(data_dict, filename, slice_num):
     plt.show()
     
 for files in data:
-    plot_slices(data, files, slice_num=2)
+    plot_slices(data, files, slice_num=9)
     
 
 #%%
+# stack the slices to make a 3D volume
+def make3Dvolume(data):
+    for f, file_data in data.items():
+        for data_type, slices in file_data.items():
+            stacked_slices = []
+            # create volume by stacking array slices into 1 object
+            for s, arr in slices.items():
+                stacked_slices.append(arr)
+            # update dictionary to remove the slices sub-keys    
+            file_data[data_type] = np.array(stacked_slices)
+    return data
+
+vol_dict = make3Dvolume(data)
+#%%
+plt.subplot(121), plt.imshow(vol_dict['file_brain_AXFLAIR_200_6002442.h5']['acceleration'][0], cmap='gray')
+plt.subplot(122), plt.imshow(vol_dict['file_brain_AXFLAIR_200_6002442.h5']['original_rss'][0], cmap='gray')
+plt.show()
+
+#%% 
+# print keys for each sub-dictionary
+for key, sub_dict in vol_dict.items():
+    print(f"Dataset type for filename '{key}':")
+    for sub_key, subsub_dict in sub_dict.items():
+        print(f"Slices for dataset '{sub_key}':")
+        print(subsub_dict.shape)
+    print() # add an empty line between sub-dicts
+# %%
+from torch.utils.data import Dataset, DataLoader
+
+class fastDataset(Dataset):
+    def __init__(self, data_dict: Dict, is3D: bool = False):
+        self.data_dict = data_dict
+        self.is3D = is3D 
+        # return data_dict as 3D volume or not
+        if self.is3D == True:
+            self.data_dict = self.make3Dvolume(self.data_dict)
+    
+    def __len__(self) -> int:
+        """
+        Return length of the dataset
+        """
+        if self.is3D == True:
+            return len(self.data_dict.keys()) # get the number of files in dictionary
+        else:
+            total_slices = 0
+            for file_data in self.data_dict.values():
+                # from acceleration array (doesn't matter since original_rss is the same len)
+                slices = file_data.get('acceleration', {})
+                # add total number of slices from acceleration data to total slice count
+                total_slices += len(slices)
+            return total_slices
+            
+    # stack the slices to make a 3D volume
+    def make3Dvolume(self, data_dict):
+        for file, file_data in self.data_dict.items():
+            for data_type, slices in file_data.items():
+                stacked_slices = []
+                # create volume by stacking array slices into 1 object
+                for slice_data in slices:
+                    stacked_slices.append(slice_data)
+                # update dictionary to remove the slices sub-keys    
+                file_data[data_type] = np.array(stacked_slices)
+        return data_dict
+    
+    
+# %%
+data2d = fastDataset(data_dict)
+print('len data2d', len(data2d))
+data3d = fastDataset(data_dict, is3D=True)
+print('len data3d', len(data3d))
+
+print(data3d.__dict__)
+print(data3d['file_brain_AXFLAIR_200_6002442.h5']['acceleration'])
+# %%

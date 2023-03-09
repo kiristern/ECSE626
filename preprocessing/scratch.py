@@ -362,6 +362,15 @@ for key, sub_dict in vol_dict.items():
         print(f"Slices for dataset '{sub_key}':")
         print(subsub_dict.shape)
     print() # add an empty line between sub-dicts
+    
+# print keys for each sub-dictionary
+for fname, ftype in data.items():
+    print(f"for filename '{fname}':")
+    for typ, sli in ftype.items():
+        print(f"Slices shape for dataset '{typ}':")
+        for s, arr in sli.items():
+            print(s, arr.shape)
+    print() # add an empty line between sub-dicts
 # %%
 from torch.utils.data import Dataset, DataLoader
 
